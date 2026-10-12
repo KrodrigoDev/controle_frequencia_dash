@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from dash import Input, Output, State, callback, dash_table, dcc, html, no_update
+from dash import ALL, Input, Output, State, callback, dcc, html, no_update
 
 import config
 from src.model import crud
@@ -20,7 +20,7 @@ def layout():
     segmentos = sorted(ativos["tipo_professor"].dropna().unique(), key=ind.chave_nome) if not ativos.empty else []
     return html.Div([
         *c.cabecalho("Fazer chamada",
-                     "1) Escolha o dia  2) Ajuste quem faltou ou trouxe atestado  3) Clique em Salvar chamada. "
+                     "1) Escolha o dia  2) Clique no status de quem faltou ou trouxe atestado  3) Clique em Salvar chamada. "
                      "Se o dia já tiver chamada, ela aparece preenchida e pode ser corrigida."),
         c.msg("Nenhum servidor ativo cadastrado. Peça a um administrador para cadastrar.", "aviso")
         if ativos.empty else None,
@@ -41,35 +41,7 @@ def layout():
             c.botao("Todos compareceram", f"{P}-todos"),
             html.Span(id=f"{P}-contagem", className="sub", style={"color": "#6B7280", "fontSize": ".85rem"}),
         ], className="botoes", style={"marginBottom": "10px"}),
-            dash_table.DataTable(
-                id=f"{P}-tabela",
-                columns=[
-                    {"name": "Servidor", "id": "servidor", "editable": False},
-                    {"name": "Cargo / função", "id": "cargo", "editable": False},
-                    {"name": "Segmento", "id": "segmento", "editable": False},
-                    {"name": "Já lançado?", "id": "lancado", "editable": False},
-                    {"name": "Status (clique para mudar)", "id": "status", "presentation": "dropdown",
-                     "editable": True},
-                    {"name": "Observação", "id": "observacao", "editable": True},
-                ],
-                data=[], editable=True, page_action="none", sort_action="native",
-                style_table={"overflowX": "auto", "maxHeight": "60vh", "overflowY": "auto"},
-                fixed_rows={"headers": True},
-                style_cell={"textAlign": "left", "minWidth": "90px", "whiteSpace": "normal", "height": "auto",
-                            "fontFamily": c.FONTE, "fontSize": "13px", "padding": "6px 8px"},
-                style_header={"backgroundColor": config.COR_PRIMARIA, "color": "#FFFFFF", "fontWeight": "600"},
-                style_cell_conditional=[{"if": {"column_id": "servidor"}, "minWidth": "220px"},
-                                        {"if": {"column_id": "status"}, "minWidth": "170px"},
-                                        {"if": {"column_id": "observacao"}, "minWidth": "220px"}],
-                style_data_conditional=[
-                    {"if": {"filter_query": '{status} = "FALTOU"', "column_id": "status"},
-                     "backgroundColor": "#F9E0E0", "fontWeight": "700"},
-                    {"if": {"filter_query": '{status} = "ATESTADO" or {status} = "DECLARAÇÃO"', "column_id": "status"},
-                     "backgroundColor": "#FDEFD9", "fontWeight": "700"},
-                    {"if": {"filter_query": '{lancado} = "Não"', "column_id": "lancado"}, "color": "#B26B00"},
-                ],
-                css=[{"selector": ".Select-menu-outer", "rule": "display: block !important"}],
-            ),
+            html.Div(id=f"{P}-lista", className="chamada"),
             html.Div([c.botao("Salvar chamada", f"{P}-salvar", "primario")], className="botoes",
                      style={"marginTop": "12px"}),
             html.Div(id=f"{P}-msg")),
@@ -90,23 +62,52 @@ def opcoes_nomes(segmentos):
 
 
 def _status_opcoes():
-    return list(crud.lookup_options("status_presenca").values())
+    """Status na ordem de uso: Compareceu, Faltou, Atestado/Declaração, outros."""
+    ordem = {config.GRUPO_PRESENTE: 0, config.GRUPO_FALTA: 1, config.GRUPO_JUSTIFICADO: 2}
+    return sorted(crud.lookup_options("status_presenca").values(),
+                  key=lambda st: (ordem.get(ind.grupo_do_status(st), 3), st))
+
+
+def _classe_status(status: str) -> str:
+    grupo = ind.grupo_do_status(status)
+    return {config.GRUPO_PRESENTE: "p", config.GRUPO_FALTA: "f", config.GRUPO_JUSTIFICADO: "j"}.get(grupo, "o")
+
+
+def _linha(r, status: str, observacao: str, lancado: bool, opcoes: list[str]) -> html.Div:
+    """Uma linha da chamada: nome + botões de status (um clique) + observação."""
+    sid = int(r.id)
+    detalhe = " · ".join(x for x in [c.valor(r.cargo_funcao), c.valor(r.tipo_professor)] if x)
+    return html.Div([
+        html.Div([
+            html.Div(r.nome_servidor, className="ch-nome"),
+            html.Div([detalhe, html.Span(" · já lançado" if lancado else " · ainda não lançado",
+                                         className="ch-ok" if lancado else "ch-pend")], className="ch-detalhe"),
+        ], className="ch-pessoa"),
+        dcc.RadioItems(
+            id={"tipo": f"{P}-st", "sid": sid}, value=status, inline=True, className="ch-status",
+            options=[{"label": html.Span(o.capitalize(), className=f"pill {_classe_status(o)}"), "value": o}
+                     for o in opcoes],
+        ),
+        dcc.Input(id={"tipo": f"{P}-obs", "sid": sid}, type="text", value=observacao, debounce=True,
+                  placeholder="Observação (opcional)", className="ch-obs"),
+    ], className="ch-linha")
 
 
 @callback(
-    Output(f"{P}-tabela", "data"), Output(f"{P}-tabela", "dropdown"), Output(f"{P}-contagem", "children"),
-    Output(f"{P}-aviso-dia", "children"),
+    Output(f"{P}-lista", "children"), Output(f"{P}-contagem", "children"), Output(f"{P}-aviso-dia", "children"),
     Input(f"{P}-data", "date"), Input(f"{P}-segmentos", "value"), Input(f"{P}-nomes", "value"),
     Input(f"{P}-salvo", "data"),
 )
 def carregar(data_txt, segmentos, nomes, _salvo):
     auth.exigir()
     if not data_txt:
-        return [], no_update, "", c.msg("Escolha o dia.", "aviso")
+        return [], "", c.msg("Escolha o dia.", "aviso")
     dia = dt.date.fromisoformat(data_txt[:10])
     ativos = crud.list_servidores(apenas_ativos=True)
+    if ativos.empty:
+        return [], "", None
     opcoes = _status_opcoes()
-    padrao = next(iter(config.STATUS_PRESENTE & set(opcoes)), opcoes[0] if opcoes else "")
+    padrao = next(iter(config.STATUS_PRESENTE & set(opcoes)), opcoes[0] if opcoes else None)
     if segmentos:
         ativos = ativos[ativos["tipo_professor"].isin(segmentos)]
     if nomes:
@@ -114,13 +115,12 @@ def carregar(data_txt, segmentos, nomes, _salvo):
     ativos = ativos.sort_values("nome_servidor", key=lambda s: s.map(ind.chave_nome))
     ja = crud.presencas_do_dia(dia)
     rotulo = crud.lookup_options("status_presenca")
-    linhas = [{
-        "id_servidor": int(r.id), "servidor": r.nome_servidor, "cargo": c.valor(r.cargo_funcao) or "",
-        "segmento": c.valor(r.tipo_professor) or "—", "lancado": "Sim" if r.id in ja else "Não",
-        "status": rotulo.get(ja[r.id]["id_status_presenca"], padrao) if r.id in ja else padrao,
-        "observacao": ja[r.id]["observacao"] if r.id in ja else "",
-    } for r in ativos.itertuples()]
-    n_ja = sum(1 for linha in linhas if linha["lancado"] == "Sim")
+    linhas = []
+    for r in ativos.itertuples():
+        reg = ja.get(int(r.id))
+        status = rotulo.get(reg["id_status_presenca"], padrao) if reg else padrao
+        linhas.append(_linha(r, status, reg["observacao"] if reg else "", bool(reg), opcoes))
+    n_ja = sum(1 for r in ativos.itertuples() if int(r.id) in ja)
     contagem = f"{len(linhas)} servidor(es) na lista · {n_ja} já lançado(s) neste dia"
     avisos = []
     if dia.weekday() >= 5:
@@ -129,44 +129,46 @@ def carregar(data_txt, segmentos, nomes, _salvo):
     if n_ja:
         avisos.append(c.msg(f"Este dia já tem chamada para {n_ja} servidor(es). Ao salvar, os dados serão corrigidos.",
                             "info"))
-    return linhas, {"status": {"options": [{"label": o, "value": o} for o in opcoes], "clearable": False}}, \
-        contagem, avisos
+    if not linhas:
+        linhas = [c.msg("Nenhum servidor para os filtros escolhidos.", "info")]
+    return linhas, contagem, avisos
 
 
 @callback(
-    Output(f"{P}-tabela", "data", allow_duplicate=True),
-    Input(f"{P}-todos", "n_clicks"), State(f"{P}-tabela", "data"), prevent_initial_call=True,
+    Output({"tipo": f"{P}-st", "sid": ALL}, "value", allow_duplicate=True),
+    Input(f"{P}-todos", "n_clicks"), State({"tipo": f"{P}-st", "sid": ALL}, "value"), prevent_initial_call=True,
 )
-def todos_compareceram(_n, linhas):
+def todos_compareceram(_n, valores):
     auth.exigir()
-    opcoes = _status_opcoes()
-    padrao = next(iter(config.STATUS_PRESENTE & set(opcoes)), None)
-    if not padrao or not linhas:
-        return no_update
-    return [{**linha, "status": padrao} for linha in linhas]
+    padrao = next(iter(config.STATUS_PRESENTE & set(_status_opcoes())), None)
+    if not padrao or not valores:
+        return [no_update] * len(valores or [])
+    return [padrao] * len(valores)
 
 
 @callback(
     Output(f"{P}-msg", "children"), Output(f"{P}-salvo", "data"),
     Input(f"{P}-salvar", "n_clicks"),
-    State(f"{P}-tabela", "data"), State(f"{P}-data", "date"), State(f"{P}-salvo", "data"),
+    State({"tipo": f"{P}-st", "sid": ALL}, "value"), State({"tipo": f"{P}-st", "sid": ALL}, "id"),
+    State({"tipo": f"{P}-obs", "sid": ALL}, "value"), State({"tipo": f"{P}-obs", "sid": ALL}, "id"),
+    State(f"{P}-data", "date"), State(f"{P}-salvo", "data"),
     prevent_initial_call=True,
 )
-def salvar(_n, linhas, data_txt, salvo):
+def salvar(_n, status, ids_st, obs, ids_obs, data_txt, salvo):
     auth.exigir()
-    if not linhas or not data_txt:
+    if not status or not data_txt:
         return c.msg("Não há servidores na lista para salvar.", "aviso"), no_update
     dia = dt.date.fromisoformat(data_txt[:10])
     por_rotulo = {v: k for k, v in crud.lookup_options("status_presenca").items()}
-    sem_status = [linha["servidor"] for linha in linhas if linha.get("status") not in por_rotulo]
-    if sem_status:
-        return c.msg("Escolha o status de: " + ", ".join(sem_status[:5]), "erro"), no_update
-    crud.bulk_upsert_presenca(dia, [{
-        "id_servidor": int(linha["id_servidor"]), "id_status_presenca": por_rotulo[linha["status"]],
-        "observacao": (linha.get("observacao") or "").strip(),
-    } for linha in linhas])
-    faltas = sum(1 for linha in linhas if linha["status"] in config.STATUS_FALTA)
-    return c.msg(f"Chamada de {ind.fmt_data(dia)} salva para {len(linhas)} servidor(es) "
+    observacoes = {i["sid"]: (o or "").strip() for i, o in zip(ids_obs, obs)}
+    if any(s not in por_rotulo for s in status):
+        return c.msg("Escolha o status de todos os servidores da lista.", "erro"), no_update
+    crud.bulk_upsert_presenca(dia, [
+        {"id_servidor": int(i["sid"]), "id_status_presenca": por_rotulo[s], "observacao": observacoes.get(i["sid"], "")}
+        for i, s in zip(ids_st, status)
+    ])
+    faltas = sum(1 for s in status if s in config.STATUS_FALTA)
+    return c.msg(f"Chamada de {ind.fmt_data(dia)} salva para {len(status)} servidor(es) "
                  f"({faltas} falta(s) sem justificativa).", "ok"), (salvo or 0) + 1
 
 
