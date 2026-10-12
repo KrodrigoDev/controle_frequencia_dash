@@ -1,0 +1,156 @@
+/* Controle de Frequência — visual global (o Dash carrega este arquivo sozinho).
+   Para trocar a identidade visual, altere só as variáveis em :root. */
+
+:root {
+    --primary: #3064AD;
+    --primary-dark: #244C87;
+    --primary-soft: #E8EFF9;
+    --bg: #F4F6FA;
+    --card: #FFFFFF;
+    --text: #1F2937;
+    --muted: #6B7280;
+    --border: #E3E8EF;
+    --success: #2E7D32;
+    --success-soft: #E3F1E4;
+    --warning: #E68A00;
+    --warning-soft: #FDEFD9;
+    --danger: #C62828;
+    --danger-soft: #F9E0E0;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
+    --sidebar-w: 236px;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-size: 15px; }
+a { color: var(--primary); }
+
+/* ---------- Estrutura ---------- */
+.shell { display: flex; min-height: 100vh; }
+.sidebar {
+    width: var(--sidebar-w); flex: 0 0 var(--sidebar-w); background: var(--card);
+    border-right: 1px solid var(--border); padding: 16px 12px; position: sticky; top: 0;
+    height: 100vh; overflow-y: auto; display: flex; flex-direction: column;
+}
+.sidebar .logo { display: block; max-width: 150px; margin: 0 auto 10px; }
+.sidebar .sistema { text-align: center; font-weight: 700; color: var(--primary); margin-bottom: 12px; }
+.user-chip {
+    background: var(--primary-soft); color: var(--primary-dark); border-radius: 10px;
+    padding: 8px 10px; margin-bottom: 12px; font-size: .86rem; line-height: 1.3;
+}
+.user-chip b { display: block; }
+.user-chip span { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; opacity: .85; }
+.menu-secao { font-size: .7rem; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .07em; margin: 14px 8px 4px; }
+.menu-link {
+    display: block; padding: 8px 10px; border-radius: 8px; color: var(--text); text-decoration: none;
+    font-weight: 500; font-size: .93rem; margin-bottom: 2px;
+}
+.menu-link:hover { background: var(--bg); }
+.menu-link.ativo { background: var(--primary); color: #fff; }
+.menu-rodape { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+.aviso-senha { background: var(--warning-soft); color: #7A4A00; border-radius: 8px; padding: 8px 10px;
+    font-size: .8rem; margin-bottom: 8px; }
+
+.conteudo { flex: 1; min-width: 0; padding: 22px 28px 48px; max-width: 1400px; }
+.pagina-titulo { font-size: 1.55rem; font-weight: 800; color: var(--primary); margin: 0 0 2px; letter-spacing: -.01em; }
+.pagina-ajuda { color: var(--muted); margin: 0 0 16px; font-size: .92rem; }
+
+/* ---------- Cartões e blocos ---------- */
+.bloco { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 16px; }
+.bloco h3 { margin: 0 0 4px; font-size: 1.02rem; }
+.bloco .sub { color: var(--muted); font-size: .84rem; margin: 0 0 10px; }
+.grade-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grade-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+@media (max-width: 1100px) { .grade-2, .grade-2-1 { grid-template-columns: 1fr; } }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 12px 14px; border-top: 4px solid var(--accent, var(--primary)); }
+.kpi .rotulo { color: var(--muted); font-size: .8rem; font-weight: 600; }
+.kpi .valor { font-size: 1.8rem; font-weight: 800; line-height: 1.15; margin: 2px 0; }
+.kpi .detalhe { color: var(--muted); font-size: .78rem; }
+
+.resumo { background: var(--primary-soft); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; }
+.resumo ul { margin: 0; padding-left: 18px; }
+.resumo li { margin: 3px 0; }
+
+.msg { border-radius: 10px; padding: 10px 14px; margin: 8px 0; font-size: .92rem; }
+.msg.ok { background: var(--success-soft); color: #1B5E20; }
+.msg.erro { background: var(--danger-soft); color: #8E1B1B; }
+.msg.aviso { background: var(--warning-soft); color: #7A4A00; }
+.msg.info { background: var(--primary-soft); color: var(--primary-dark); }
+
+/* checklist do fechamento */
+.check { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px dashed var(--border); }
+.check:last-child { border-bottom: 0; }
+.check .icone { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; color: #fff; font-weight: 800;
+    font-size: .8rem; display: flex; align-items: center; justify-content: center; }
+.check.ok .icone { background: var(--success); }
+.check.alerta .icone { background: var(--warning); }
+
+/* ---------- Filtros e formulários ---------- */
+.filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+.filtro { min-width: 190px; flex: 1 1 190px; max-width: 320px; }
+.filtro.largo { max-width: 460px; flex-basis: 300px; }
+.filtro label, .campo label { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.campo { margin-bottom: 10px; }
+.form-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.campo input[type=text], .campo input[type=password], .filtro > input[type=text] {
+    width: 100%; padding: 8px 10px; border: 1px solid #C9D1DC; border-radius: 8px; font-size: .95rem;
+    background: #fff; color: var(--text);
+}
+input:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
+
+.botoes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { border: 1px solid var(--border); background: #fff; color: var(--text); padding: 8px 14px;
+    border-radius: 8px; font-weight: 600; font-size: .9rem; cursor: pointer; }
+.btn:hover { background: var(--bg); }
+.btn.primario { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn.primario:hover { background: var(--primary-dark); }
+.btn.perigo { color: var(--danger); border-color: #EBC1C1; }
+.btn.perigo:hover { background: var(--danger-soft); }
+.btn.exportar { border-color: var(--primary); color: var(--primary); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- Tabelas (DataTable) ---------- */
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner th.dash-filter {
+    background: #FBFCFE !important; }
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner th.dash-filter input {
+    font-family: inherit; }
+.dash-table-container .previous-next-container { font-size: .85rem; }
+
+/* ---------- Calendário individual ---------- */
+.calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.calendario .cab { font-size: .75rem; font-weight: 700; color: var(--muted); text-align: center; }
+.cal-dia { border-radius: 8px; padding: 6px; min-height: 58px; border: 1px solid var(--border); background: #fff; }
+.cal-dia .num { font-size: .75rem; color: var(--muted); }
+.cal-dia .st { font-weight: 700; font-size: .82rem; margin-top: 4px; }
+.cal-dia.vazio { background: transparent; border: 0; }
+.cal-dia.fds { background: #F0F2F6; }
+.cal-dia.P { background: var(--success-soft); border-color: #BFDFC1; }
+.cal-dia.F { background: var(--danger-soft); border-color: #EBC1C1; }
+.cal-dia.J { background: var(--warning-soft); border-color: #F2D3A3; }
+.legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); margin-top: 8px; }
+.legenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* ---------- Abas ---------- */
+.abas { margin-top: 4px; }
+
+/* ---------- Login ---------- */
+.login-fundo { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.login-caixa { width: 100%; max-width: 380px; background: #fff; border-radius: 16px; box-shadow: var(--shadow);
+    border: 1px solid var(--border); padding: 28px; }
+.login-caixa img { display: block; max-width: 140px; margin: 0 auto 12px; }
+.login-caixa h1 { text-align: center; color: var(--primary); font-size: 1.35rem; margin: 0 0 4px; }
+.login-caixa p { text-align: center; color: var(--muted); margin: 0 0 18px; font-size: .9rem; }
+.login-caixa .btn { width: 100%; padding: 10px; margin-top: 6px; }
+
+@media (max-width: 800px) {
+    .shell { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; flex: none; }
+    .conteudo { padding: 16px; }
+    .form-grade { grid-template-columns: 1fr; }
+}
